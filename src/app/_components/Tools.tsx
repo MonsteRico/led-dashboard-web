@@ -42,7 +42,10 @@ function PencilButton({ setTool }: { setTool: (tool: ToolObject) => void }) {
   const currentTool = useAtomValue(toolAtom);
   return (
     <Button
-      className={cn(currentTool?.name === "Pencil" && "border-4 border-blue-500")}
+      variant={"secondary"}
+      className={cn(
+        currentTool?.name === "Pencil" && "border-4 border-blue-500",
+      )}
       onClick={() => setTool(Pencil)}
     >
       <LucidePencil className="h-5 w-5" />
@@ -60,7 +63,10 @@ function EraserButton({ setTool }: { setTool: (tool: ToolObject) => void }) {
   const currentTool = useAtomValue(toolAtom);
   return (
     <Button
-      className={cn(currentTool?.name === "Eraser" && "border-4 border-blue-500")}
+      variant={"secondary"}
+      className={cn(
+        currentTool?.name === "Eraser" && "border-4 border-blue-500",
+      )}
       onClick={() => setTool(Eraser)}
     >
       <EraserIcon className="h-5 w-5" />
@@ -120,7 +126,10 @@ function EyedropperButton({
   const currentTool = useAtomValue(toolAtom);
   return (
     <Button
-      className={cn(currentTool?.name === "Eyedropper" && "border-4 border-blue-500")}
+      variant={"secondary"}
+      className={cn(
+        currentTool?.name === "Eyedropper" && "border-4 border-blue-500",
+      )}
       onClick={() => setTool(Eyedropper)}
     >
       <Pipette className="h-5 w-5" />

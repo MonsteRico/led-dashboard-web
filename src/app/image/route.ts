@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     console.log(rawBuffer) // save the raw buffer to the database
     await db.delete(images);
     await db.insert(images).values({
-        rawBuffer: JSON.stringify(rawBuffer),
+        rawBuffer: JSON.stringify(rawBuffer)
     });
     return new Response("ok");
 }

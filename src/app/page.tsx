@@ -85,14 +85,14 @@ export default function HomePage() {
     ctx.lineWidth = 1;
     for (let i = 0; i < 64; i++) {
       ctx.beginPath();
-      ctx.strokeStyle = "#000000";
+      ctx.strokeStyle = "#666666";
       ctx.moveTo(i * gridCellSize, 0);
       ctx.lineTo(i * gridCellSize, canvas.height);
       ctx.stroke();
     }
     for (let i = 0; i < 32; i++) {
       ctx.beginPath();
-      ctx.strokeStyle = "#000000";
+      ctx.strokeStyle = "#666666";
       ctx.moveTo(0, i * gridCellSize);
       ctx.lineTo(canvas.width, i * gridCellSize);
       ctx.stroke();
@@ -100,12 +100,12 @@ export default function HomePage() {
 
     // draw the lines at the right and bottom edges
     ctx.beginPath();
-    ctx.strokeStyle = "#000000";
+    ctx.strokeStyle = "#666666";
     ctx.moveTo(0, 0);
     ctx.lineTo(canvas.width, 0);
     ctx.stroke();
     ctx.beginPath();
-    ctx.strokeStyle = "#000000";
+    ctx.strokeStyle = "#666666";
     ctx.moveTo(0, canvas.height);
     ctx.lineTo(canvas.width, canvas.height);
     ctx.stroke();
@@ -133,7 +133,7 @@ export default function HomePage() {
   };
 
   return (
-    <main className="flex flex-row items-center justify-center pt-4">
+    <main className="flex flex-row items-center justify-center pt-4 bg-slate-900 h-screen">
       <canvas
         onMouseDown={(e) => {
           if (e.button === 0) {
@@ -156,12 +156,13 @@ export default function HomePage() {
         ref={canvasRef}
         width={gridCellSize * 64}
         height={gridCellSize * 32}
-        className="ml-8 w-[70%]"
+        className="ml-8 w-[70%] bg-slate-800"
       />
       <div className="flex w-[30%] flex-col items-center justify-center gap-4">
         <div className="flex flex-row items-center justify-center gap-4">
           {tools.map((tool) => tool.render({ setTool }))}
           <Button
+            variant={"secondary"}
             onClick={() => {
               setTool(Pencil);
               setColor(new Color("#000000"));

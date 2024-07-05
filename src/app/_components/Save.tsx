@@ -10,6 +10,7 @@ function Save({ ctx }: { ctx: CanvasRenderingContext2D | null }) {
   function saveImage() {
     if (!ctx) return;
     const canvasAsBuffer: Uint8Array = new Uint8Array(64 * 32 * 3);
+    console.log(canvasAsBuffer.length)
     for (let px = 1; px < 65; px++) {
       for (let py = 1; py < 33; py++) {
         const pixel = ctx.getImageData(
@@ -26,9 +27,14 @@ function Save({ ctx }: { ctx: CanvasRenderingContext2D | null }) {
     }
     // POST canvasAsBuffer to server on route /image
     void axios.post("/image", { rawBuffer: canvasAsBuffer });
+    window.alert("Image sent to dashboard!");
   }
 
-  return <Button onClick={saveImage}>Save/Send</Button>;
+  return (
+    <Button variant={"secondary"} onClick={saveImage}>
+      Save/Send
+    </Button>
+  );
 }
 
 export default Save;
