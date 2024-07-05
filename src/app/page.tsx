@@ -156,7 +156,7 @@ export default function HomePage() {
         ref={canvasRef}
         width={gridCellSize * 64}
         height={gridCellSize * 32}
-        className="ml-8 w-[70%] bg-slate-800"
+        className="ml-8 w-[70%] bg-black"
       />
       <div className="flex w-[30%] flex-col items-center justify-center gap-4">
         <div className="flex flex-row items-center justify-center gap-4">
