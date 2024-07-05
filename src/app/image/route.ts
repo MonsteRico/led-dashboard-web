@@ -10,7 +10,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
     // request body has the raw buffer as Uint8Array
     if (!request.body) return;
-    const rawBuffer = await request.json();    //
+    const rawBuffer = await request.json();
     console.log(rawBuffer) // save the raw buffer to the database
     await db.delete(images);
     await db.insert(images).values({

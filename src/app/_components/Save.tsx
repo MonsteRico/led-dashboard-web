@@ -19,13 +19,13 @@ function Save({ ctx }: { ctx: CanvasRenderingContext2D | null }) {
           1,
         ).data;
         const indexInBuffer = (py * 64 + px) * 3;
-        canvasAsBuffer[indexInBuffer + 0] = pixel[0] as number;
-        canvasAsBuffer[indexInBuffer + 1] = pixel[1] as number;
-        canvasAsBuffer[indexInBuffer + 2] = pixel[2] as number;
+        canvasAsBuffer[indexInBuffer + 0] = pixel[0]!;
+        canvasAsBuffer[indexInBuffer + 1] = pixel[1]!;
+        canvasAsBuffer[indexInBuffer + 2] = pixel[2]!;
       }
     }
     // POST canvasAsBuffer to server on route /image
-    axios.post("/image", { rawBuffer: canvasAsBuffer });
+    void axios.post("/image", { rawBuffer: canvasAsBuffer });
   }
 
   return <Button onClick={saveImage}>Save/Send</Button>;
