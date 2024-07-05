@@ -1,6 +1,6 @@
 import { db } from "@/server/db";
 import { images } from "@/server/db/schema";
-
+// force deploy
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
     const image = await db.query.images.findFirst();
