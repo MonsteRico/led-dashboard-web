@@ -65,7 +65,11 @@ export default function HomePage() {
   const resizeCanvas = () => {
     if (canvasRef.current) {
       // resize the canvas so it fits entirely within the window
-      const gridCellSize = (window.innerWidth * 0.7) / 64;
+      const isMobile = window.innerWidth < 1024; // lg breakpoint
+      const availableWidth = isMobile
+        ? window.innerWidth * 0.9
+        : window.innerWidth * 0.7;
+      const gridCellSize = availableWidth / 64;
       setGridCellSize(gridCellSize);
       canvasRef.current.width = gridCellSize * 64;
       canvasRef.current.height = gridCellSize * 32;
@@ -188,7 +192,7 @@ export default function HomePage() {
   };
 
   return (
-    <main className="flex h-screen flex-row items-center justify-center bg-slate-900 pt-4">
+    <main className="flex h-screen flex-col items-center justify-center bg-slate-900 pt-4 lg:flex-row">
       <canvas
         onMouseDown={(e) => {
           if (e.button === 0) {
@@ -200,6 +204,9 @@ export default function HomePage() {
             setIsUsingTool(false);
           }
         }}
+        onMouseLeave={() => {
+          setIsUsingTool(false);
+        }}
         onClick={(e) => {
           if (!canvasRef.current) return;
         }}
@@ -208,13 +215,42 @@ export default function HomePage() {
           setMouseX(e.clientX - canvasRef.current.offsetLeft);
           setMouseY(e.clientY - canvasRef.current.offsetTop);
         }}
+        onTouchStart={(e) => {
+          e.preventDefault();
+          if (e.touches.length > 0) {
+            setIsUsingTool(true);
+            const touch = e.touches[0];
+            if (touch) {
+              const rect = canvasRef.current?.getBoundingClientRect();
+              if (rect && canvasRef.current) {
+                setMouseX(touch.clientX - rect.left);
+                setMouseY(touch.clientY - rect.top);
+              }
+            }
+          }
+        }}
+        onTouchEnd={(e) => {
+          e.preventDefault();
+          setIsUsingTool(false);
+        }}
+        onTouchMove={(e) => {
+          e.preventDefault();
+          if (!canvasRef.current || e.touches.length === 0) return;
+          const touch = e.touches[0];
+          if (touch) {
+            const rect = canvasRef.current.getBoundingClientRect();
+            setMouseX(touch.clientX - rect.left);
+            setMouseY(touch.clientY - rect.top);
+          }
+        }}
         ref={canvasRef}
         width={gridCellSize * 64}
         height={gridCellSize * 32}
-        className="ml-8 w-[70%] bg-black"
+        className="w-full touch-none bg-black lg:ml-8 lg:w-[70%]"
+        style={{ touchAction: "none" }}
       />
-      <div className="flex w-[30%] flex-col items-center justify-center gap-4">
-        <div className="flex flex-row items-center justify-center gap-4">
+      <div className="flex w-full flex-col items-center justify-center gap-4 p-4 lg:w-[30%]">
+        <div className="flex flex-row flex-wrap items-center justify-center gap-2 lg:gap-4">
           {tools.map((tool) => tool.render({ setTool }))}
           <Button
             variant={"secondary"}
@@ -232,12 +268,14 @@ export default function HomePage() {
             Current Color: {color.hex()}
           </p>
         </div>
-        <SketchPicker
-          color={color.hex()}
-          onChangeComplete={(colorObj) => {
-            setColor(new Color(colorObj.hex));
-          }}
-        />
+        <div className="origin-center scale-75 lg:scale-100">
+          <SketchPicker
+            color={color.hex()}
+            onChangeComplete={(colorObj) => {
+              setColor(new Color(colorObj.hex));
+            }}
+          />
+        </div>
         <p className="text-sm text-gray-500">
           Use this key to make a request to this site to get the stringified
           image data. This lets you display the image in whatever you're doing.
