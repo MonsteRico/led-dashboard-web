@@ -76,10 +76,18 @@ export default function HomePage() {
     setTool(Pencil);
     window.addEventListener("resize", resizeCanvas);
     resizeCanvas();
+
+    // Check for key parameter in URL and set it automatically
+    const urlParams = new URLSearchParams(window.location.search);
+    const keyFromUrl = urlParams.get("key");
+    if (keyFromUrl) {
+      setKey(keyFromUrl);
+    }
+
     return () => {
       window.removeEventListener("resize", resizeCanvas);
     };
-  }, []);
+  }, [setKey]);
 
   const drawGrid = (ctx: CanvasRenderingContext2D) => {
     const canvas = ctx.canvas;
@@ -191,11 +199,14 @@ export default function HomePage() {
           https://led-dashboard-web.vercel.app/image?key={key}
         </p>
         <input
-          type="text"
+          type="password"
           placeholder="Key"
           className="w-full"
           value={key}
           onChange={(e) => setKey(e.target.value)}
+          name="led-dashboard-key"
+          id="led-dashboard-key"
+          autoComplete="current-password"
         ></input>
         <Save ctx={canvasRef.current?.getContext("2d") ?? null} />
       </div>
