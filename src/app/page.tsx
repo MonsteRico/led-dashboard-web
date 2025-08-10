@@ -65,15 +65,31 @@ export default function HomePage() {
 
   const resizeCanvas = () => {
     if (canvasRef.current) {
-      // resize the canvas so it fits entirely within the window
       const isMobile = window.innerWidth < 1024; // lg breakpoint
-      const availableWidth = isMobile
-        ? window.innerWidth * 0.9
-        : window.innerWidth * 0.7;
-      const gridCellSize = availableWidth / 64;
-      setGridCellSize(gridCellSize);
-      canvasRef.current.width = gridCellSize * 64;
-      canvasRef.current.height = gridCellSize * 32;
+
+      if (isMobile) {
+        // On mobile, maintain 64x32 grid but fit it in available space
+        // Use the smaller dimension to ensure it fits
+        const maxWidth = window.innerWidth * 0.45; // 45% of screen width for canvas
+        const maxHeight = window.innerHeight * 0.8; // 80% of screen height
+
+        const cellSizeFromWidth = maxWidth / 64;
+        const cellSizeFromHeight = maxHeight / 32;
+
+        // Use the smaller cell size to ensure it fits in both dimensions
+        const gridCellSize = Math.min(cellSizeFromWidth, cellSizeFromHeight);
+
+        setGridCellSize(gridCellSize);
+        canvasRef.current.width = gridCellSize * 64;
+        canvasRef.current.height = gridCellSize * 32;
+      } else {
+        // Desktop: use 70% of window width
+        const availableWidth = window.innerWidth * 0.7;
+        const gridCellSize = availableWidth / 64;
+        setGridCellSize(gridCellSize);
+        canvasRef.current.width = gridCellSize * 64;
+        canvasRef.current.height = gridCellSize * 32;
+      }
     }
   };
 
@@ -237,7 +253,13 @@ export default function HomePage() {
   };
 
   return (
-    <main className="flex h-screen flex-col items-center justify-center bg-slate-900 pt-4 lg:flex-row">
+    <main className="flex h-screen flex-row items-center justify-center overflow-hidden bg-slate-900 p-4">
+      {/* Mobile instruction */}
+      <div className="fixed left-1/2 top-2 z-10 -translate-x-1/2 transform lg:hidden">
+        <p className="rounded bg-black bg-opacity-50 px-2 py-1 text-xs text-gray-400">
+          📱 Rotate to landscape for best experience
+        </p>
+      </div>
       <canvas
         onMouseDown={(e) => {
           if (e.button === 0) {
@@ -291,10 +313,10 @@ export default function HomePage() {
         ref={canvasRef}
         width={gridCellSize * 64}
         height={gridCellSize * 32}
-        className="w-full touch-none bg-black lg:ml-8 lg:w-[70%]"
-        style={{ touchAction: "none" }}
+        className="w-[45%] touch-none bg-black lg:w-[70%]"
+        style={{ touchAction: "none", userSelect: "none" }}
       />
-      <div className="flex w-full flex-col items-center justify-center gap-4 p-4 lg:w-[30%]">
+      <div className="flex max-h-screen w-[55%] flex-col items-center justify-center gap-2 overflow-y-auto p-2 lg:w-[30%] lg:gap-4 lg:p-4">
         <div className="flex flex-row flex-wrap items-center justify-center gap-2 lg:gap-4">
           {tools.map((tool) => tool.render({ setTool }))}
           <Button
@@ -313,7 +335,7 @@ export default function HomePage() {
             Current Color: {color.hex()}
           </p>
         </div>
-        <div className="origin-center scale-75 lg:scale-100">
+        <div className="origin-center scale-50 lg:scale-100">
           <SketchPicker
             color={color.hex()}
             onChangeComplete={(colorObj) => {
@@ -321,7 +343,7 @@ export default function HomePage() {
             }}
           />
         </div>
-        <p className="text-sm text-gray-500">
+        <p className="text-center text-xs text-gray-500 lg:text-sm">
           Use this key to make a request to this site to get the stringified
           image data. This lets you display the image in whatever you're doing.
           Use it as a query param to the /image route, i.e.
