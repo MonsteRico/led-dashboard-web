@@ -89,6 +89,18 @@ export default function HomePage() {
     };
   }, [setKey]);
 
+  // Load current image when key changes or canvas is ready
+  useEffect(() => {
+    if (key && canvasRef.current) {
+      // Small delay to ensure canvas is properly initialized
+      const timer = setTimeout(() => {
+        loadCurrentImage();
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }
+  }, [key, gridCellSize]);
+
   const drawGrid = (ctx: CanvasRenderingContext2D) => {
     const canvas = ctx.canvas;
     ctx.lineWidth = 1;
@@ -139,6 +151,40 @@ export default function HomePage() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawGrid(ctx);
+  };
+
+  const loadCurrentImage = async () => {
+    if (!key || !canvasRef.current) return;
+
+    try {
+      const response = await fetch(`/image?key=${encodeURIComponent(key)}`);
+      if (!response.ok) {
+        console.log("No existing image found for this key");
+        return;
+      }
+
+      const imageData = await response.json();
+      if (!imageData.rawBuffer) return;
+
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      // Parse the raw buffer and create ImageData
+      const buffer = JSON.parse(imageData.rawBuffer);
+      const imageDataObj = new ImageData(
+        new Uint8ClampedArray(buffer),
+        canvas.width,
+        canvas.height,
+      );
+
+      // Clear canvas and draw the loaded image
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.putImageData(imageDataObj, 0, 0);
+      drawGrid(ctx);
+    } catch (error) {
+      console.error("Error loading current image:", error);
+    }
   };
 
   return (
