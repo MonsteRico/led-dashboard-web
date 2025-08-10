@@ -31,6 +31,7 @@ export default function HomePage() {
   const [gridY, setGridY] = useAtom(gridYAtom);
   const [isUsingTool, setIsUsingTool] = useState(false);
   const [key, setKey] = useAtom(keyAtom);
+  const [canvasFirstLoad, setCanvasFirstLoad] = useState(false);
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -80,7 +81,6 @@ export default function HomePage() {
     setTool(Pencil);
     window.addEventListener("resize", resizeCanvas);
     resizeCanvas();
-
     // Check for key parameter in URL and set it automatically
     const urlParams = new URLSearchParams(window.location.search);
     const keyFromUrl = urlParams.get("key");
@@ -92,18 +92,6 @@ export default function HomePage() {
       window.removeEventListener("resize", resizeCanvas);
     };
   }, [setKey]);
-
-  // Load current image when key changes or canvas is ready
-  useEffect(() => {
-    if (key && canvasRef.current) {
-      // Small delay to ensure canvas is properly initialized
-      const timer = setTimeout(() => {
-        loadCurrentImage();
-      }, 100);
-
-      return () => clearTimeout(timer);
-    }
-  }, [key, gridCellSize]);
 
   const drawGrid = (ctx: CanvasRenderingContext2D) => {
     const canvas = ctx.canvas;
@@ -143,8 +131,13 @@ export default function HomePage() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    if (!canvasFirstLoad && key) {
+      loadCurrentImage();
+      setCanvasFirstLoad(true);
+    }
+
     drawGrid(ctx);
-  }, [canvasRef, drawGrid, gridCellSize]);
+  }, [canvasRef, drawGrid, gridCellSize, key]);
 
   const clear = () => {
     const canvas = canvasRef.current;
@@ -163,29 +156,81 @@ export default function HomePage() {
     try {
       const response = await fetch(`/image?key=${encodeURIComponent(key)}`);
       if (!response.ok) {
-        console.log("No existing image found for this key");
         return;
       }
+      const imageData = (await response.json()) as {
+        key: string;
+        id: string;
+        rawBuffer: string;
+      };
 
-      const imageData = await response.json();
       if (!imageData.rawBuffer) return;
 
       const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      // Ensure canvas has valid dimensions
+      if (canvas.width === 0 || canvas.height === 0) {
+        console.error("Canvas has invalid dimensions");
+        return;
+      }
+
       const ctx = canvas.getContext("2d");
-      if (!ctx) return;
+      if (!ctx) {
+        console.error("Could not get canvas context");
+        return;
+      }
 
-      // Parse the raw buffer and create ImageData
-      const buffer = JSON.parse(imageData.rawBuffer);
-      const imageDataObj = new ImageData(
-        new Uint8ClampedArray(buffer),
-        canvas.width,
-        canvas.height,
-      );
+      // Parse the raw buffer
+      const buffer = JSON.parse(imageData.rawBuffer) as {
+        [key: number]: number;
+      };
 
-      // Clear canvas and draw the loaded image
+      // Convert buffer object to array
+      const bufferArray = Object.values(buffer);
+
+      // Clear canvas first
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.putImageData(imageDataObj, 0, 0);
       drawGrid(ctx);
+
+      // Store current tool and color
+      const currentTool = tool;
+      const currentColor = color;
+
+      // Set to Pencil tool for drawing
+      setTool(Pencil);
+
+      // Draw each pixel using the Pencil tool
+      for (let y = 0; y < 32; y++) {
+        for (let x = 0; x < 64; x++) {
+          const pixelIndex = (y * 64 + x) * 3; // 3 bytes per pixel (RGB)
+
+          const r = bufferArray[pixelIndex] || 0;
+          const g = bufferArray[pixelIndex + 1] || 0;
+          const b = bufferArray[pixelIndex + 2] || 0;
+
+          // Only draw if the pixel is not black (has some color)
+          if (r > 0 || g > 0 || b > 0) {
+            // Calculate canvas coordinates for this grid cell
+            const canvasX = x * gridCellSize;
+            const canvasY = y * gridCellSize;
+
+            // Use the Pencil tool to draw this pixel
+            const tempCtx = canvas.getContext("2d");
+            if (tempCtx) {
+              // Fill the entire grid cell with the color
+              tempCtx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+              tempCtx.fillRect(canvasX, canvasY, gridCellSize, gridCellSize);
+            }
+          }
+        }
+      }
+
+      // Restore original tool and color
+      setTool(currentTool);
+      setColor(currentColor);
+
+      console.log("Image drawn using Pencil tool");
     } catch (error) {
       console.error("Error loading current image:", error);
     }
