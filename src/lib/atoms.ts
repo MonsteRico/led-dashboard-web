@@ -10,6 +10,7 @@ const mouseYAtom = atom(0);
 const gridXAtom = atom(0);
 const gridYAtom = atom(0);
 const isUsingToolAtom = atom(false);
+const keyAtom = atom("");
 const store = createStore();
 
 export {
@@ -21,5 +22,6 @@ export {
   gridXAtom,
   gridYAtom,
   isUsingToolAtom,
+  keyAtom,
   store,
 };

@@ -12,6 +12,7 @@ import {
   gridXAtom,
   gridYAtom,
   isUsingToolAtom,
+  keyAtom,
   mouseXAtom,
   mouseYAtom,
   toolAtom,
@@ -29,7 +30,7 @@ export default function HomePage() {
   const [gridX, setGridX] = useAtom(gridXAtom);
   const [gridY, setGridY] = useAtom(gridYAtom);
   const [isUsingTool, setIsUsingTool] = useState(false);
-
+  const [key, setKey] = useAtom(keyAtom);
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -133,7 +134,7 @@ export default function HomePage() {
   };
 
   return (
-    <main className="flex flex-row items-center justify-center pt-4 bg-slate-900 h-screen">
+    <main className="flex h-screen flex-row items-center justify-center bg-slate-900 pt-4">
       <canvas
         onMouseDown={(e) => {
           if (e.button === 0) {
@@ -183,6 +184,19 @@ export default function HomePage() {
             setColor(new Color(colorObj.hex));
           }}
         />
+        <p className="text-sm text-gray-500">
+          Use this key to make a request to this site to get the stringified
+          image data. This lets you display the image in whatever you're doing.
+          Use it as a query param to the /image route, i.e.
+          https://led-dashboard-web.vercel.app/image?key={key}
+        </p>
+        <input
+          type="text"
+          placeholder="Key"
+          className="w-full"
+          value={key}
+          onChange={(e) => setKey(e.target.value)}
+        ></input>
         <Save ctx={canvasRef.current?.getContext("2d") ?? null} />
       </div>
     </main>

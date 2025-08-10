@@ -22,6 +22,7 @@ export const images = createTable(
   "image",
   {
     id: serial("id").primaryKey(),
+    key: varchar("key").notNull(),
     rawBuffer: varchar("raw_buffer").notNull(),
   },
 );

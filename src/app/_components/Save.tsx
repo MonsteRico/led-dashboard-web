@@ -3,8 +3,10 @@ import { gridCellSizeAtom } from "@/lib/atoms";
 import { useAtomValue } from "jotai";
 import React from "react";
 import axios from "axios";
+import { keyAtom } from "@/lib/atoms";
 function Save({ ctx }: { ctx: CanvasRenderingContext2D | null }) {
   const gridCellSize = useAtomValue(gridCellSizeAtom);
+  const key = useAtomValue(keyAtom);
   if (!ctx) return null;
 
   function saveImage() {
@@ -26,7 +28,7 @@ function Save({ ctx }: { ctx: CanvasRenderingContext2D | null }) {
       }
     }
     // POST canvasAsBuffer to server on route /image
-    void axios.post("/image", { rawBuffer: canvasAsBuffer });
+    void axios.post("/image", { rawBuffer: canvasAsBuffer, key });
     window.alert("Image sent to dashboard!");
   }
 

@@ -1,20 +1,32 @@
 import { db } from "@/server/db";
 import { images } from "@/server/db/schema";
+import { eq } from "drizzle-orm";
 // force deploy
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
-    const image = await db.query.images.findFirst();
+    // get the key from the request
+    const { searchParams } = new URL(request.url);
+    const key = searchParams.get("key");
+    if (!key) return new Response("No key provided", { status: 400 });
+    const image = await db.query.images.findFirst({
+        where: eq(images.key, key)
+    });
+    if (!image) return new Response("No image found", { status: 404 });
     return new Response(JSON.stringify(image));
 }
 
 export async function POST(request: Request) {
     // request body has the raw buffer as Uint8Array
     if (!request.body) return;
-    const rawBuffer = await request.json();
-    console.log(rawBuffer) // save the raw buffer to the database
-    await db.delete(images);
+    const { rawBuffer, key } = await request.json();
+    console.log(rawBuffer, key) // save the raw buffer to the database
+    
+    // Delete existing image with the same key
+    await db.delete(images).where(eq(images.key, key));
+
     await db.insert(images).values({
-        rawBuffer: JSON.stringify(rawBuffer)
+        rawBuffer: JSON.stringify(rawBuffer),
+        key: key
     });
     return new Response("ok");
 }
