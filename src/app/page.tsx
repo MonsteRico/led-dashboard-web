@@ -1,115 +1,125 @@
 "use client";
-import { Dotting } from "dotting";
-import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Color from "color";
 import { SketchPicker } from "react-color";
-import { Pencil, ToolObject, tools } from "./_components/Tools";
+import { Pencil, tools } from "./_components/Tools";
 import { useAtom } from "jotai";
 import {
   colorAtom,
   gridCellSizeAtom,
   gridXAtom,
   gridYAtom,
-  isUsingToolAtom,
   keyAtom,
   mouseXAtom,
   mouseYAtom,
   toolAtom,
+  store,
 } from "@/lib/atoms";
 import { Button } from "@/components/ui/button";
 import Save from "./_components/Save";
 
 export default function HomePage() {
+  // Canvas reference
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Global state
   const [gridCellSize, setGridCellSize] = useAtom(gridCellSizeAtom);
   const [tool, setTool] = useAtom(toolAtom);
   const [color, setColor] = useAtom(colorAtom);
+  const [key, setKey] = useAtom(keyAtom);
+
+  // Mouse and grid position state
   const [mouseX, setMouseX] = useAtom(mouseXAtom);
   const [mouseY, setMouseY] = useAtom(mouseYAtom);
   const [gridX, setGridX] = useAtom(gridXAtom);
   const [gridY, setGridY] = useAtom(gridYAtom);
+
+  // Local state
   const [isUsingTool, setIsUsingTool] = useState(false);
-  const [key, setKey] = useAtom(keyAtom);
   const [canvasFirstLoad, setCanvasFirstLoad] = useState(false);
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  const [pixels, setPixels] = useState<Uint8Array>(new Uint8Array(64 * 32 * 3));
 
-    const ctx = canvas.getContext("2d");
+  // Ref to access current pixels without causing re-renders
+  const pixelsRef = useRef<Uint8Array>(new Uint8Array(64 * 32 * 3));
+
+  // Function to update a pixel in the array
+  const updatePixel = useCallback(
+    (x: number, y: number, r: number, g: number, b: number) => {
+      setPixels((prevPixels) => {
+        const newPixels = new Uint8Array(prevPixels);
+        const index = (y * 64 + x) * 3;
+        newPixels[index] = r;
+        newPixels[index + 1] = g;
+        newPixels[index + 2] = b;
+        pixelsRef.current = newPixels;
+        return newPixels;
+      });
+    },
+    [],
+  );
+
+  // Helper function to get grid position from mouse/touch coordinates
+  const getGridPosition = useCallback(
+    (clientX: number, clientY: number) => {
+      if (!canvasRef.current) return { x: 0, y: 0 };
+
+      const rect = canvasRef.current.getBoundingClientRect();
+      const canvasX = clientX - rect.left;
+      const canvasY = clientY - rect.top;
+
+      // Calculate the scale factor between CSS size and actual canvas size
+      const scaleX = canvasRef.current.width / rect.width;
+      const scaleY = canvasRef.current.height / rect.height;
+
+      // Convert to actual canvas coordinates
+      const actualX = canvasX * scaleX;
+      const actualY = canvasY * scaleY;
+
+      // Convert to grid coordinates
+      const gridX = Math.floor(actualX / gridCellSize);
+      const gridY = Math.floor(actualY / gridCellSize);
+
+      // Clamp to valid grid range
+      return {
+        x: Math.max(0, Math.min(63, gridX)),
+        y: Math.max(0, Math.min(31, gridY)),
+      };
+    },
+    [gridCellSize],
+  );
+
+  // Function to draw pixels from array to canvas
+  const drawPixelsToCanvas = useCallback(() => {
+    if (!canvasRef.current) return;
+
+    const ctx = canvasRef.current.getContext("2d");
     if (!ctx) return;
-    if (isUsingTool) {
-      if (!tool) setTool(Pencil);
-      console.log(gridX, gridY, gridCellSize);
-      tool!.use(ctx);
-    }
-    drawGrid(ctx);
-  }, [gridX, gridY, gridCellSize, isUsingTool]);
 
-  useEffect(() => {
-    if (canvasRef.current) {
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
+    // Clear the canvas
+    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
 
-      // Calculate grid cell indices based on mouse position
-      const gridX = Math.floor(mouseX / gridCellSize);
-      const gridY = Math.floor(mouseY / gridCellSize);
+    // Draw each pixel from the array
+    for (let x = 0; x < 64; x++) {
+      for (let y = 0; y < 32; y++) {
+        const index = (y * 64 + x) * 3;
+        const r = pixels[index] ?? 0;
+        const g = pixels[index + 1] ?? 0;
+        const b = pixels[index + 2] ?? 0;
 
-      if (isNaN(gridX) || isNaN(gridY)) return;
-
-      setGridX(gridX);
-      setGridY(gridY);
-    }
-  }, [mouseX, mouseY, gridCellSize]);
-
-  const resizeCanvas = () => {
-    if (canvasRef.current) {
-      const isMobile = window.innerWidth < 1024; // lg breakpoint
-
-      if (isMobile) {
-        // On mobile, maintain 64x32 grid but fit it in available space
-        // Use the smaller dimension to ensure it fits
-        const maxWidth = window.innerWidth * 0.45; // 45% of screen width for canvas
-        const maxHeight = window.innerHeight * 0.8; // 80% of screen height
-
-        const cellSizeFromWidth = maxWidth / 64;
-        const cellSizeFromHeight = maxHeight / 32;
-
-        // Use the smaller cell size to ensure it fits in both dimensions
-        const gridCellSize = Math.min(cellSizeFromWidth, cellSizeFromHeight);
-
-        setGridCellSize(gridCellSize);
-        canvasRef.current.width = gridCellSize * 64;
-        canvasRef.current.height = gridCellSize * 32;
-      } else {
-        // Desktop: use 70% of window width
-        const availableWidth = window.innerWidth * 0.7;
-        const gridCellSize = availableWidth / 64;
-        setGridCellSize(gridCellSize);
-        canvasRef.current.width = gridCellSize * 64;
-        canvasRef.current.height = gridCellSize * 32;
+        // Only draw non-black pixels
+        if (r > 0 || g > 0 || b > 0) {
+          ctx.fillStyle = `rgb(${r},${g},${b})`;
+          ctx.fillRect(
+            x * gridCellSize,
+            y * gridCellSize,
+            gridCellSize,
+            gridCellSize,
+          );
+        }
       }
     }
-  };
 
-  useEffect(() => {
-    setTool(Pencil);
-    window.addEventListener("resize", resizeCanvas);
-    resizeCanvas();
-    // Check for key parameter in URL and set it automatically
-    const urlParams = new URLSearchParams(window.location.search);
-    const keyFromUrl = urlParams.get("key");
-    if (keyFromUrl) {
-      setKey(keyFromUrl);
-    }
-
-    return () => {
-      window.removeEventListener("resize", resizeCanvas);
-    };
-  }, [setKey]);
-
-  const drawGrid = (ctx: CanvasRenderingContext2D) => {
+    // Draw the grid
     const canvas = ctx.canvas;
     ctx.lineWidth = 1;
     for (let i = 0; i < 64; i++) {
@@ -127,7 +137,7 @@ export default function HomePage() {
       ctx.stroke();
     }
 
-    // draw the lines at the right and bottom edges
+    // Draw border lines
     ctx.beginPath();
     ctx.strokeStyle = "#666666";
     ctx.moveTo(0, 0);
@@ -138,42 +148,105 @@ export default function HomePage() {
     ctx.moveTo(0, canvas.height);
     ctx.lineTo(canvas.width, canvas.height);
     ctx.stroke();
-  };
+  }, [pixels, gridCellSize]);
+
+  // Handle tool usage
+  useEffect(() => {
+    if (isUsingTool && tool) {
+      if (tool.name === "Pencil") {
+        const color = store.get(colorAtom);
+        const rgb = color.rgb().array();
+        updatePixel(gridX, gridY, rgb[0] ?? 0, rgb[1] ?? 0, rgb[2] ?? 0);
+      } else if (tool.name === "Eraser") {
+        updatePixel(gridX, gridY, 0, 0, 0);
+      } else if (tool.name === "Eyedropper") {
+        const index = (gridY * 64 + gridX) * 3;
+        const r = pixelsRef.current[index] ?? 0;
+        const g = pixelsRef.current[index + 1] ?? 0;
+        const b = pixelsRef.current[index + 2] ?? 0;
+
+        store.set(colorAtom, new Color([r, g, b]));
+      }
+    }
+  }, [isUsingTool, tool, gridX, gridY, updatePixel]);
+
+  // Update pixelsRef when pixels change
+  useEffect(() => {
+    pixelsRef.current = pixels;
+  }, [pixels]);
+
+  // Redraw canvas when pixels or grid size changes
+  useEffect(() => {
+    drawPixelsToCanvas();
+  }, [pixels, gridCellSize, drawPixelsToCanvas]);
+
+  // Resize canvas based on window dimensions
+  const resizeCanvas = useCallback(() => {
+    const isMobile = window.innerWidth < 1024;
+    let newGridCellSize: number;
+
+    if (isMobile) {
+      const maxWidth = window.innerWidth * 0.85;
+      const maxHeight = window.innerHeight * 0.6;
+      const cellSizeFromWidth = maxWidth / 64;
+      const cellSizeFromHeight = maxHeight / 32;
+      newGridCellSize = Math.min(cellSizeFromWidth, cellSizeFromHeight);
+    } else {
+      const availableWidth = window.innerWidth * 0.7;
+      newGridCellSize = availableWidth / 64;
+    }
+
+    if (canvasRef.current) {
+      canvasRef.current.width = newGridCellSize * 64;
+      canvasRef.current.height = newGridCellSize * 32;
+    }
+
+    setGridCellSize(newGridCellSize);
+  }, [setGridCellSize]);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    setTool(Pencil);
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    const handleResize = () => {
+      resizeCanvas();
+    };
 
+    window.addEventListener("resize", handleResize);
+    resizeCanvas();
+
+    // Check for key parameter in URL and set it automatically
+    const urlParams = new URLSearchParams(window.location.search);
+    const keyFromUrl = urlParams.get("key");
+    if (keyFromUrl) {
+      setKey(keyFromUrl);
+    }
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [setKey, resizeCanvas]);
+
+  useEffect(() => {
     if (!canvasFirstLoad && key) {
       loadCurrentImage();
       setCanvasFirstLoad(true);
     }
-
-    drawGrid(ctx);
-  }, [canvasRef, drawGrid, gridCellSize, key]);
+  }, [key, canvasFirstLoad]);
 
   const clear = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawGrid(ctx);
+    // Clear the pixel array
+    const emptyPixels = new Uint8Array(64 * 32 * 3);
+    setPixels(emptyPixels);
+    pixelsRef.current = emptyPixels;
   };
 
   const loadCurrentImage = async () => {
-    if (!key || !canvasRef.current) return;
+    if (!key) return;
 
     try {
       const response = await fetch(`/image?key=${encodeURIComponent(key)}`);
-      if (!response.ok) {
-        return;
-      }
+      if (!response.ok) return;
+
       const imageData = (await response.json()) as {
         key: string;
         id: string;
@@ -182,84 +255,35 @@ export default function HomePage() {
 
       if (!imageData.rawBuffer) return;
 
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-
-      // Ensure canvas has valid dimensions
-      if (canvas.width === 0 || canvas.height === 0) {
-        console.error("Canvas has invalid dimensions");
-        return;
-      }
-
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        console.error("Could not get canvas context");
-        return;
-      }
-
-      // Parse the raw buffer
       const buffer = JSON.parse(imageData.rawBuffer) as {
         [key: number]: number;
       };
 
-      // Convert buffer object to array
       const bufferArray = Object.values(buffer);
+      const newPixels = new Uint8Array(64 * 32 * 3);
 
-      // Clear canvas first
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawGrid(ctx);
-
-      // Store current tool and color
-      const currentTool = tool;
-      const currentColor = color;
-
-      // Set to Pencil tool for drawing
-      setTool(Pencil);
-
-      // Draw each pixel using the Pencil tool
       for (let y = 0; y < 32; y++) {
         for (let x = 0; x < 64; x++) {
-          const pixelIndex = (y * 64 + x) * 3; // 3 bytes per pixel (RGB)
-
+          const pixelIndex = (y * 64 + x) * 3;
           const r = bufferArray[pixelIndex] || 0;
           const g = bufferArray[pixelIndex + 1] || 0;
           const b = bufferArray[pixelIndex + 2] || 0;
 
-          // Only draw if the pixel is not black (has some color)
-          if (r > 0 || g > 0 || b > 0) {
-            // Calculate canvas coordinates for this grid cell
-            const canvasX = x * gridCellSize;
-            const canvasY = y * gridCellSize;
-
-            // Use the Pencil tool to draw this pixel
-            const tempCtx = canvas.getContext("2d");
-            if (tempCtx) {
-              // Fill the entire grid cell with the color
-              tempCtx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-              tempCtx.fillRect(canvasX, canvasY, gridCellSize, gridCellSize);
-            }
-          }
+          newPixels[pixelIndex] = r;
+          newPixels[pixelIndex + 1] = g;
+          newPixels[pixelIndex + 2] = b;
         }
       }
 
-      // Restore original tool and color
-      setTool(currentTool);
-      setColor(currentColor);
-
-      console.log("Image drawn using Pencil tool");
+      setPixels(newPixels);
+      pixelsRef.current = newPixels;
     } catch (error) {
       console.error("Error loading current image:", error);
     }
   };
 
   return (
-    <main className="flex h-screen flex-row items-center justify-center overflow-hidden bg-slate-900 p-4">
-      {/* Mobile instruction */}
-      <div className="fixed left-1/2 top-2 z-10 -translate-x-1/2 transform lg:hidden">
-        <p className="rounded bg-black bg-opacity-50 px-2 py-1 text-xs text-gray-400">
-          📱 Rotate to landscape for best experience
-        </p>
-      </div>
+    <main className="flex h-screen flex-col items-center justify-center overflow-hidden bg-slate-900 p-4 lg:flex-row">
       <canvas
         onMouseDown={(e) => {
           if (e.button === 0) {
@@ -274,13 +298,13 @@ export default function HomePage() {
         onMouseLeave={() => {
           setIsUsingTool(false);
         }}
-        onClick={(e) => {
-          if (!canvasRef.current) return;
-        }}
         onMouseMove={(e) => {
           if (!canvasRef.current) return;
-          setMouseX(e.clientX - canvasRef.current.offsetLeft);
-          setMouseY(e.clientY - canvasRef.current.offsetTop);
+          const { x, y } = getGridPosition(e.clientX, e.clientY);
+          setMouseX(x * gridCellSize + gridCellSize / 2);
+          setMouseY(y * gridCellSize + gridCellSize / 2);
+          setGridX(x);
+          setGridY(y);
         }}
         onTouchStart={(e) => {
           e.preventDefault();
@@ -288,11 +312,11 @@ export default function HomePage() {
             setIsUsingTool(true);
             const touch = e.touches[0];
             if (touch) {
-              const rect = canvasRef.current?.getBoundingClientRect();
-              if (rect && canvasRef.current) {
-                setMouseX(touch.clientX - rect.left);
-                setMouseY(touch.clientY - rect.top);
-              }
+              const { x, y } = getGridPosition(touch.clientX, touch.clientY);
+              setMouseX(x * gridCellSize + gridCellSize / 2);
+              setMouseY(y * gridCellSize + gridCellSize / 2);
+              setGridX(x);
+              setGridY(y);
             }
           }
         }}
@@ -305,18 +329,20 @@ export default function HomePage() {
           if (!canvasRef.current || e.touches.length === 0) return;
           const touch = e.touches[0];
           if (touch) {
-            const rect = canvasRef.current.getBoundingClientRect();
-            setMouseX(touch.clientX - rect.left);
-            setMouseY(touch.clientY - rect.top);
+            const { x, y } = getGridPosition(touch.clientX, touch.clientY);
+            setMouseX(x * gridCellSize + gridCellSize / 2);
+            setMouseY(y * gridCellSize + gridCellSize / 2);
+            setGridX(x);
+            setGridY(y);
           }
         }}
         ref={canvasRef}
         width={gridCellSize * 64}
         height={gridCellSize * 32}
-        className="w-[45%] touch-none bg-black lg:w-[70%]"
+        className="w-full touch-none bg-black lg:w-[70%]"
         style={{ touchAction: "none", userSelect: "none" }}
       />
-      <div className="flex max-h-screen w-[55%] flex-col items-center justify-center gap-2 overflow-y-auto p-2 lg:w-[30%] lg:gap-4 lg:p-4">
+      <div className="flex max-h-screen w-full flex-col items-center justify-center gap-2 overflow-y-auto p-2 lg:w-[30%] lg:gap-4 lg:p-4">
         <div className="flex flex-row flex-wrap items-center justify-center gap-2 lg:gap-4">
           {tools.map((tool) => tool.render({ setTool }))}
           <Button
@@ -328,6 +354,15 @@ export default function HomePage() {
             }}
           >
             Clear
+          </Button>
+          <Button
+            variant={"secondary"}
+            onClick={() => {
+              setTool(Pencil);
+              loadCurrentImage();
+            }}
+          >
+            Reset to current image
           </Button>
         </div>
         <div className="flex flex-row items-center justify-center">
@@ -359,7 +394,7 @@ export default function HomePage() {
           id="led-dashboard-key"
           autoComplete="current-password"
         ></input>
-        <Save ctx={canvasRef.current?.getContext("2d") ?? null} />
+        <Save pixels={pixels} />
       </div>
     </main>
   );

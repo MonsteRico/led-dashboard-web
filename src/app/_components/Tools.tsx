@@ -24,13 +24,11 @@ export interface ToolObject {
 }
 
 const draw = (ctx: CanvasRenderingContext2D) => {
-  console.log("draw");
   const gridX = store.get(gridXAtom);
-  console.log(gridX);
   const gridY = store.get(gridYAtom);
   const gridCellSize = store.get(gridCellSizeAtom);
   const color = store.get(colorAtom);
-  // Calculate the top-left corner of the grid cell
+
   const cellTopLeftX = gridX * gridCellSize;
   const cellTopLeftY = gridY * gridCellSize;
 
@@ -96,11 +94,9 @@ const eyedropper = (ctx: CanvasRenderingContext2D) => {
   const gridY = store.get(gridYAtom);
   const gridCellSize = store.get(gridCellSizeAtom);
 
-  // Calculate the top-left corner of the grid cell
   const cellTopLeftX = gridX * gridCellSize;
   const cellTopLeftY = gridY * gridCellSize;
 
-  // get color of the cell
   const cellColor = ctx.getImageData(
     cellTopLeftX + gridCellSize / 2,
     cellTopLeftY + gridCellSize / 2,
@@ -108,8 +104,9 @@ const eyedropper = (ctx: CanvasRenderingContext2D) => {
     1,
   ).data;
 
-  // set the color of the cell
-  store.set(colorAtom, new Color("#000000"));
+  if (!cellColor) return;
+
+  store.set(colorAtom, new Color([cellColor[0], cellColor[1], cellColor[2]]));
 };
 
 export const Eyedropper: ToolObject = {
